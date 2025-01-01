@@ -3,4 +3,5 @@ add_library(sync_buffer STATIC
     linked_list.c
 )
 
-target_include_directories(sync_buffer PUBLIC src/sync_buffer)
+target_include_directories(sync_buffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+

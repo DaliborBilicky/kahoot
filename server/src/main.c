@@ -1,6 +1,6 @@
-#include <stdio.h>
+#include "sync_buffer/sync_buffer.h"
 
 int main(int argc, char *argv[]) {
-    printf("Hello World1\n");
+    print_message();
     return 0;
 }
