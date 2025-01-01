@@ -1,52 +1,66 @@
-# Prerequisites
-*.d
+# Ignore CMake build directories and CMakeCache.txt
+/CMakeLists.txt.user
+/CMakeLists.txt.server
+/CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+# Ignore build output directories (e.g., Debug/Release)
+/build/
+/bin/
+/lib/
+/obj/
+/out/
 
-# Linker output
-*.ilk
-*.map
-*.exp
+# Ignore IDE and editor directories
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
 
-# Precompiled Headers
-*.gch
-*.pch
+# Ignore system files (macOS, Windows, Linux)
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Libraries
-*.lib
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Ignore Python virtual environments
+venv/
+env/
+*.env/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore Python Tkinter files (if generated or cached)
+*.swp
+*.bak
+*.swpx
+
+# Ignore coverage reports
+coverage/
+*.coveragerc
+
+# Ignore compiled binary files for C (e.g., executables)
+*.out
+*.exe
 *.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
 *.so
-*.so.*
+*.dll
 *.dylib
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+# Ignore Python packages
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
