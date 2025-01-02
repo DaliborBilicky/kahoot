@@ -1,4 +1,4 @@
-#include "linked_list.h"
+#include "buffer.h"
 
 #include <stdio.h>
 

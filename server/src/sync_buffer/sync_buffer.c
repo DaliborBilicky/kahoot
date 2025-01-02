@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "linked_list.h"
+#include "buffer.h"
 
 void print_message() {
     print_message_list();
