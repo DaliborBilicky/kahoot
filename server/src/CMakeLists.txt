@@ -1,5 +1,6 @@
 add_subdirectory(sync_buffer)
+add_subdirectory(server)
 
 add_executable(kahoot_server main.c)
 
-target_link_libraries(kahoot_server sync_buffer)
+target_link_libraries(kahoot_server sync_buffer server pthread)

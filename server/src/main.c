@@ -1,34 +1,17 @@
 #include <pthread.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 
-#include "sync_buffer/sync_buffer.h"
+#include "server/server.h"
 
-#define BUFFER_CAPACITY 5
-#define NUM_ITEMS 10
-
-typedef struct {
-    SynchronizedBuffer* buffer;
-    int id;
-} ThreadArg;
-
-void* producer(void* arg) {
-    ThreadArg* threadArg = (ThreadArg*)arg;
-    SynchronizedBuffer* buffer = threadArg->buffer;
-    int producer_id = threadArg->id;
-
-    for (int i = 0; i < NUM_ITEMS; i++) {
-        printf("Producer %d: Producing item %d\n", producer_id, i);
-        sync_buff_push(buffer, &i);
-        sleep(1);
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "USAGE: %s <port> <password>\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
-    return NULL;
-}
 
-void* consumer(void* arg) {
-    ThreadArg* threadArg = (ThreadArg*)arg;
-    SynchronizedBuffer* buffer = threadArg->buffer;
-    int consumer_id = threadArg->id;
+    int port = atoi(argv[1]);
+    const char *password = argv[2];
 
     for (int i = 0; i < NUM_ITEMS; i++) {
         int item;

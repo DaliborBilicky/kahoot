@@ -1,3 +1,5 @@
+rm -rf ./server/build
+mkdir ./server/build
 cd ./server/build/
 cmake ..
 make 
