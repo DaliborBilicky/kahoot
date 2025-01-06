@@ -3,7 +3,7 @@
 #include <string.h>
 
 void buffer_init(Buffer* self, size_t capacity, size_t data_size) {
-    self->data = calloc(capacity, sizeof(data_size));
+    self->data = calloc(capacity, data_size);
     self->data_size = data_size;
     self->capacity = capacity;
     self->size = 0;
