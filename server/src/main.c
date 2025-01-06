@@ -1,6 +1,4 @@
-#include <pthread.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "server/server.h"
 
@@ -10,34 +8,17 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int port = atoi(argv[1]);
+    int server_port = atoi(argv[1]);
     const char *password = argv[2];
 
-    for (int i = 0; i < NUM_ITEMS; i++) {
-        int item;
-        sync_buff_pop(buffer, &item);
-        printf("Consumer %d: Consumed item %d\n", consumer_id, item);
-        sleep(1);
+    ServerContext context;
+    if (server_init(&context, server_port, password) < 0) {
+        fprintf(stderr, "ERROR: Failed to initialize server\n");
+        return EXIT_FAILURE;
     }
-    return NULL;
-}
 
-int main() {
-    SynchronizedBuffer buffer;
-    sync_buff_init(&buffer, BUFFER_CAPACITY, sizeof(int));
+    server_run(&context);
+    server_shutdown(&context);
 
-    pthread_t producer_thread, consumer_thread;
-
-    ThreadArg producer_arg = {&buffer, 1};
-    ThreadArg consumer_arg = {&buffer, 1};
-
-    pthread_create(&producer_thread, NULL, producer, &producer_arg);
-    pthread_create(&consumer_thread, NULL, consumer, &consumer_arg);
-
-    pthread_join(producer_thread, NULL);
-    pthread_join(consumer_thread, NULL);
-
-    sync_buff_destroy(&buffer);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
