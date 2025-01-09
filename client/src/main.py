@@ -167,6 +167,7 @@ def connect_to_server(host, port, password, client_id):
 
     except Exception as e:
         print(f"Client {client_id}: Error: {e}")
+
     finally:
         client_socket.close()
 

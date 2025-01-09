@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "../sockets/sockets.h"
 #include "server_communication.h"
@@ -21,7 +22,68 @@ int server_init(ServerContext *context, int port, const char *password) {
     sync_buff_init(&context->response_buffer, RESPONSE_BUFFER_CAPACITY,
                    sizeof(ClientMessage));
 
+    context->lobbies = NULL;
+    
     return 0;
+}
+
+void handle_lobby(int lobby_id, ServerContext *context) {
+    Lobby *lobby = get_lobby_by_id(context, lobby_id);
+    if (lobby == NULL) {
+        printf("Error: Lobby ID %d not found\n", lobby_id);
+        exit(1);
+    }
+
+    printf("Lobby ID: %d | Current Players: %d\n", lobby->id, lobby->current_players);
+    
+    while (1) {
+        sleep(1);
+    }
+
+    printf("Lobby %d process ended\n", lobby_id);
+    exit(0);
+}
+
+int create_lobby(ServerContext *context, int base_port) {
+    static int lobby_id_counter = 1;
+    int new_port = base_port + lobby_id_counter;
+    Lobby *new_lobby = (Lobby *)malloc(sizeof(Lobby));
+    if (!new_lobby) {
+        return -1;
+    }
+
+    new_lobby->id = lobby_id_counter++;
+    new_lobby->port = new_port;
+    new_lobby->current_players = 0;
+    new_lobby->max_players = 100;
+    new_lobby->next = context->lobbies;
+    context->lobbies = new_lobby;
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("Fork failed");
+        free(new_lobby);
+        return -1;
+    }
+
+    if (pid == 0) {
+        handle_lobby(new_lobby->id, context);
+    } else {
+        printf("Created lobby %d, with process ID: %d\n", new_lobby->id, pid);
+    }
+
+    return new_lobby->id;
+}
+
+Lobby *get_lobby_by_id(ServerContext *context, int lobby_id) {
+    Lobby *lobby = context->lobbies;
+    while (lobby) {
+        if (lobby->id == lobby_id) {
+            return lobby;
+        }
+        lobby = lobby->next;
+    }
+    return NULL;
 }
 
 void server_run(ServerContext *context) {
@@ -68,7 +130,15 @@ void server_shutdown(ServerContext *context) {
         pthread_join(context->worker_threads[i], NULL);
     }
 
+    Lobby *lobby = context->lobbies;
+    while (lobby) {
+        Lobby *temp = lobby;
+        lobby = lobby->next;
+        free(temp);
+    }
+
     sync_buff_destroy(&context->request_buffer);
     sync_buff_destroy(&context->response_buffer);
+
     close(context->passive_socket);
 }

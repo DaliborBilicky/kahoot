@@ -62,22 +62,27 @@ void *process_requests(void *arg) {
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
             int port = 9000;
-            int lobby_id = port + 12340000;
+            int lobby_id = create_lobby(context, port);
+            Lobby *lobby = get_lobby_by_id(context, lobby_id);
 
-            snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "LOBBY_CREATED ID:%d PORT:%d", lobby_id, port);
-        } else if (strncmp(client_message.message, "GET_STATUS", 10) == 0) {
-            snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "SERVER_STATUS STATUS:Running MAX_PLAYERS:100 "
-                     "CURRENT_PLAYERS:5");
+            if (lobby != NULL) {
+                snprintf(client_message.message, MAX_RESPONSE_LEN,
+                 "LOBBY_CREATED ID:%d PORT:%d CURRENT_PLAYERS:%d MAX_PLAYERS:%d",
+                 lobby->id, lobby->port, lobby->current_players, lobby->max_players);
+            } else {
+                snprintf(client_message.message, MAX_RESPONSE_LEN,
+                 "ERROR: Could not retrieve lobby details.");
+            }
+        
         } else {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "ERROR INVALID_REQUEST:Unknown-command");
+                     "ERROR INVALID_REQUEST: Unknown-command");
         }
 
         sync_buff_push(&context->response_buffer, &client_message);
     }
 }
+
 
 void *send_responses(void *arg) {
     ServerContext *context = (ServerContext *)arg;
