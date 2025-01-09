@@ -22,6 +22,7 @@ typedef struct ServerContext {
     int passive_socket;
     pthread_t worker_threads[NUM_WORKERS];
     pthread_t response_thread;
+    pthread_t shutdown_thread;
     int port;
     atomic_bool running;
 } ServerContext;
