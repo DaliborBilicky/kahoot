@@ -15,14 +15,14 @@ void *handle_request(void *arg) {
     free(data);
 
     ClientMessage client_message;
-    char buffer[MAX_REQUEST_LEN];
+    char message[MAX_REQUEST_LEN];
     int authenticated = 0;
 
     client_message.active_socket = active_socket;
 
-    while (1) {
-        memset(buffer, 0, MAX_REQUEST_LEN);
-        ssize_t bytes_read = read(active_socket, buffer, MAX_REQUEST_LEN - 1);
+    while (context->running) {
+        memset(message, 0, MAX_REQUEST_LEN);
+        ssize_t bytes_read = read(active_socket, message, MAX_REQUEST_LEN - 1);
 
         if (bytes_read <= 0) {
             printf("Client disconnected: %d\n", active_socket);
@@ -30,12 +30,12 @@ void *handle_request(void *arg) {
             return NULL;
         }
 
-        buffer[bytes_read] = '\0';
-        printf("Request from client %d: %s\n", active_socket, buffer);
+        message[bytes_read] = '\0';
+        printf("Request from client %d: %s\n", active_socket, message);
 
         if (!authenticated) {
-            if (strncmp(buffer, context->password, strlen(context->password)) ==
-                0) {
+            if (strncmp(message, context->password,
+                        strlen(context->password)) == 0) {
                 authenticated = 1;
                 const char *auth_success = "AUTH_SUCCESS";
                 send(active_socket, auth_success, strlen(auth_success), 0);
@@ -47,17 +47,19 @@ void *handle_request(void *arg) {
                 return NULL;
             }
         } else {
-            strncpy(client_message.message, buffer, MAX_REQUEST_LEN - 1);
+            strncpy(client_message.message, message, MAX_REQUEST_LEN - 1);
             sync_buff_push(&context->request_buffer, &client_message);
         }
     }
+    close(active_socket);
+    return NULL;
 }
 
 void *process_requests(void *arg) {
     ServerContext *context = (ServerContext *)arg;
     ClientMessage client_message;
 
-    while (1) {
+    while (context->running) {
         sync_buff_pop(&context->request_buffer, &client_message);
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
@@ -68,8 +70,7 @@ void *process_requests(void *arg) {
                      "LOBBY_CREATED ID:%d PORT:%d", lobby_id, port);
         } else if (strncmp(client_message.message, "GET_STATUS", 10) == 0) {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "SERVER_STATUS STATUS:Running MAX_PLAYERS:100 "
-                     "CURRENT_PLAYERS:5");
+                     "SERVER_STATUS STATUS:Running");
         } else {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
                      "ERROR INVALID_REQUEST:Unknown-command");
@@ -77,13 +78,14 @@ void *process_requests(void *arg) {
 
         sync_buff_push(&context->response_buffer, &client_message);
     }
+    return NULL;
 }
 
 void *send_responses(void *arg) {
     ServerContext *context = (ServerContext *)arg;
     ClientMessage client_message;
 
-    while (1) {
+    while (context->running) {
         sync_buff_pop(&context->response_buffer, &client_message);
 
         send(client_message.active_socket, client_message.message,
@@ -91,4 +93,5 @@ void *send_responses(void *arg) {
         printf("Sent response to client %d: %s\n", client_message.active_socket,
                client_message.message);
     }
+    return NULL;
 }

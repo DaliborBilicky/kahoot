@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "server/server.h"
 
@@ -12,13 +13,15 @@ int main(int argc, char *argv[]) {
     const char *password = argv[2];
 
     ServerContext context;
-    if (server_init(&context, server_port, password) < 0) {
+    strncpy(context.password, password, MAX_REQUEST_LEN - 1);
+    context.port = server_port;
+    context.running = true;
+    if (server_init(&context) < 0) {
         fprintf(stderr, "ERROR: Failed to initialize server\n");
         return EXIT_FAILURE;
     }
 
     server_run(&context);
-    server_shutdown(&context);
 
     return EXIT_SUCCESS;
 }

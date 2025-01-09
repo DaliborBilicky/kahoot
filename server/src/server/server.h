@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <sys/types.h>
 
@@ -21,9 +22,11 @@ typedef struct ServerContext {
     int passive_socket;
     pthread_t worker_threads[NUM_WORKERS];
     pthread_t response_thread;
+    int port;
+    atomic_bool running;
 } ServerContext;
 
-int server_init(ServerContext *context, int port, const char *password);
+int server_init(ServerContext *context);
 void server_run(ServerContext *context);
 void server_shutdown(ServerContext *context);
 

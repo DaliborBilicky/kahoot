@@ -1,5 +1,7 @@
 #include "sync_buffer.h"
 
+#include <stdio.h>
+
 #include "buffer.h"
 
 void sync_buff_init(SynchronizedBuffer* self, size_t capacity,
@@ -19,20 +21,32 @@ void sync_buff_destroy(SynchronizedBuffer* self) {
 
 void sync_buff_push(SynchronizedBuffer* self, const void* input) {
     pthread_mutex_lock(&self->mutex);
-    while (self->buffer.capacity == self->buffer.size) {
+    while (self->buffer.capacity == self->buffer.size &&
+           *self->server_running) {
         pthread_cond_wait(&self->produce, &self->mutex);
     }
-    buffer_push(&self->buffer, input);
-    pthread_cond_signal(&self->consume);
+    if (*self->server_running) {
+        buffer_push(&self->buffer, input);
+        pthread_cond_signal(&self->consume);
+    }
     pthread_mutex_unlock(&self->mutex);
 }
 
 void sync_buff_pop(SynchronizedBuffer* self, void* output) {
     pthread_mutex_lock(&self->mutex);
-    while (self->buffer.size == 0) {
+    while (self->buffer.size == 0 && *self->server_running) {
         pthread_cond_wait(&self->consume, &self->mutex);
     }
-    buffer_pop(&self->buffer, output);
-    pthread_cond_signal(&self->produce);
+    if (*self->server_running) {
+        buffer_pop(&self->buffer, output);
+        pthread_cond_signal(&self->produce);
+    }
+    pthread_mutex_unlock(&self->mutex);
+}
+
+void stop_sync_buffer(SynchronizedBuffer* self) {
+    pthread_mutex_lock(&self->mutex);
+    pthread_cond_broadcast(&self->consume);
+    pthread_cond_broadcast(&self->produce);
     pthread_mutex_unlock(&self->mutex);
 }
