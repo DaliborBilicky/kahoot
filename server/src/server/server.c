@@ -89,7 +89,7 @@ void *shutdown_listener(void *arg) {
     ServerContext *context = (ServerContext *)arg;
     int command = 0;
 
-    printf("Press CTRL+D do shutdown the server.\n");
+    printf("Press CTRL+D to shutdown the server.\n");
 
     while (atomic_load(&context->running)) {
         if (scanf("%d", &command) == EOF) {

@@ -49,7 +49,8 @@ class CreateLobbyScreen(ctk.CTkFrame):
         if lobby_name:
             print(f"Lobby '{lobby_name}' was created!")
             self.master.show_frame(NicknameScreen)
-            threading.Thread(target=connect_to_server, args=(HOST, PORT, PASSWORD, CLIENT_ID)).start()
+            threading.Thread(target=connect_to_server, args=(HOST, PORT, PASSWORD, CLIENT_ID, "CREATE_LOBBY")).start()
+
 
 class JoinLobbyScreen(ctk.CTkFrame):
     def __init__(self, parent):
@@ -64,8 +65,10 @@ class JoinLobbyScreen(ctk.CTkFrame):
     def join_lobby(self):
         lobby_id = self.lobby_id_entry.get()
         if lobby_id:
-            print(f"Joined lobby ID {lobby_id}")
+            print(f"Joining lobby ID {lobby_id}")
             self.master.show_frame(NicknameScreen)
+            threading.Thread(target=connect_to_server, args=(HOST, PORT, PASSWORD, CLIENT_ID, "JOIN_LOBBY", lobby_id)).start()
+
 
 class NicknameScreen(ctk.CTkFrame):
     def __init__(self, parent):
@@ -141,7 +144,7 @@ class QuestionScreen(ctk.CTkFrame):
             self.master.username = None
             self.master.show_frame(WelcomeScreen)
 
-def connect_to_server(host, port, password, client_id):
+def connect_to_server(host, port, password, client_id, action, lobby_id=None):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -149,27 +152,36 @@ def connect_to_server(host, port, password, client_id):
         print(f"Client {client_id} connected to server")
 
         client_socket.sendall(password.encode())
-        print(f"Client {client_id}: Sent password: {password}")
-
         response = client_socket.recv(1024).decode()
         print(f"Client {client_id}: Server Response: {response}")
 
         if "AUTH_SUCCESS" in response:
-            client_request = "CREATE_LOBBY"
-            client_socket.sendall(client_request.encode())
-            response = client_socket.recv(1024).decode()
-            print(f"Client {client_id}: Server Response: {response}")
+            if action == "CREATE_LOBBY":
+                client_request = "CREATE_LOBBY"
+                client_socket.sendall(client_request.encode())
+                response = client_socket.recv(1024).decode()
+                print(f"Client {client_id}: Server Response: {response}")
+                print("Lobby created. Waiting for players...")
 
-            client_request = "GET_STATUS"
-            client_socket.sendall(client_request.encode())
-            response = client_socket.recv(1024).decode()
-            print(f"Client {client_id}: Server Response: {response}")
+            elif action == "JOIN_LOBBY" and lobby_id:
+                client_request = f"JOIN_LOBBY:{lobby_id}"
+                client_socket.sendall(client_request.encode())
+                response = client_socket.recv(1024).decode()
+                print(f"Client {client_id}: Server Response: {response}")
+                if "JOIN_SUCCESS" in response:
+                    print(f"Joined lobby {lobby_id}")
+                else:
+                    print(f"Failed to join lobby {lobby_id}")
+
+            else:
+                print(f"Invalid action: {action}")
+
 
     except Exception as e:
         print(f"Client {client_id}: Error: {e}")
-
     finally:
         client_socket.close()
+
 
 if __name__ == "__main__":
     app = QuizApp()
