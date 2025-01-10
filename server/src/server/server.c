@@ -8,7 +8,7 @@
 #include "server_communication.h"
 
 int server_init(ServerContext *context) {
-    context->passive_socket = passive_socket_init(context->port, 5);
+    context->passive_socket = passive_socket_init(context->port);
     if (context->passive_socket < 0) {
         return -1;
     }
@@ -73,7 +73,6 @@ void server_run(ServerContext *context) {
             continue;
         }
 
-        printf("before wait\n");
         *active_socket = wait_for_client_connection(context->passive_socket);
         if (*active_socket < 0) {
             free(active_socket);

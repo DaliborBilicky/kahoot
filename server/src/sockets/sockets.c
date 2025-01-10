@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/socket.h>
 
-int passive_socket_init(const int server_port, int backlog) {
+int passive_socket_init(const int server_port) {
     int passive_socket;
     struct sockaddr_in server_address;
 
