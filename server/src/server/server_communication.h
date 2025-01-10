@@ -9,7 +9,7 @@ typedef struct ClientMessage {
 } ClientMessage;
 
 typedef struct RequestThreadData {
-    ServerContext *context;
+    ServerContext *server;
     int *active_socket;
 } RequestThreadData;
 

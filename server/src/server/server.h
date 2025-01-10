@@ -27,8 +27,8 @@ typedef struct ServerContext {
     atomic_bool running;
 } ServerContext;
 
-int server_init(ServerContext *context);
-void server_run(ServerContext *context);
-void server_shutdown(ServerContext *context);
+int server_init(ServerContext *self);
+void server_run(ServerContext *self);
+void server_shutdown(ServerContext *self);
 
 #endif  // SERVER_H
