@@ -40,7 +40,7 @@ void *handle_request(void *arg) {
                 send(active_socket, auth_success, strlen(auth_success), 0);
                 printf("CLIENT_AUTHENTICATED\n");
             } else {
-                const char *auth_fail = "Invalid password";
+                const char *auth_fail = "AUTH_FAIL";
                 send(active_socket, auth_fail, strlen(auth_fail), 0);
                 close(active_socket);
                 return NULL;
@@ -62,15 +62,8 @@ void *process_requests(void *arg) {
         sync_buff_pop(&server->request_buffer, &client_message);
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
-            int port = 9000;
-            int lobby_id = port + 12340000;
-
             snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "LOBBY_CREATED ID:%d PORT:%d", lobby_id, port);
-            client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
-        } else if (strncmp(client_message.message, "GET_STATUS", 10) == 0) {
-            snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "SERVER_STATUS STATUS:Running");
+                     "LOBBY_CREATED ID:%d", server->port);
             client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
         } else {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
