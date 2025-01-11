@@ -4,7 +4,7 @@ import threading
 import time
 
 HOST = "127.0.1.1"
-PORT = 8080
+PORT = 8081
 PASSWORD = "abcd"
 CLIENT_ID = 1
 
@@ -143,48 +143,58 @@ class LobbyHostScreen(ctk.CTkFrame):
             print(f"Error in lobby host updates: {e}")
 
     def start_quiz(self):
-        print(f"Starting the quiz for lobby: {self.lobby_name}")
-        self.master.show_frame(QuestionScreen)
+            print(f"Starting the quiz for lobby: {self.lobby_name}")
+            if self.master.socket:
+                try:
+                    self.master.socket.sendall(f"SEND_QUESTION:{self.master.lobby_id}".encode())
+                    print("Quiz started, question sent to the lobby.")
+                except Exception as e:
+                    print(f"Error starting quiz: {e}")
+            self.master.show_frame(QuestionScreen)
 
 class QuestionScreen(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.questions = [
-            {"question": "Aká je farba neba?", "answers": ["Modrá", "Zelená", "Červená", "Žltá"], "correct_answer": "Modrá"},
-            {"question": "Ktorý je hlavné mesto Francúzska?", "answers": ["Londýn", "Paríž", "Berlin", "Rím"], "correct_answer": "Paríž"}
-        ]
-        self.current_question = 0
-        self.display_question()
+        self.current_question = None
+        self.answer_buttons = []
+        threading.Thread(target=self.receive_questions, daemon=True).start()
 
-    def display_question(self):
-        question_data = self.questions[self.current_question]
+    def display_question(self, question_data):
         if hasattr(self, 'question_label'):
             self.question_label.destroy()
+        for button in self.answer_buttons:
+            button.destroy()
+
         self.question_label = ctk.CTkLabel(self, text=question_data["question"], font=("Arial", 18))
         self.question_label.pack(pady=10)
+
         self.answer_buttons = []
         for i, answer in enumerate(question_data["answers"]):
-            button = ctk.CTkButton(self, text=f"{answer}", command=lambda ans=answer: self.check_answer(ans))
+            button = ctk.CTkButton(self, text=f"{answer}", command=lambda ans=answer: self.submit_answer(ans))
             button.pack(pady=5)
             self.answer_buttons.append(button)
 
-    def check_answer(self, answer):
-        correct_answer = self.questions[self.current_question]["correct_answer"]
-        if answer == correct_answer:
-            print("Correct answer!")
-            self.master.correct_answers += 1
-        else:
-            print("Incorrect answer!")
-        self.current_question += 1
-        if self.current_question < len(self.questions):
-            for button in self.answer_buttons:
-                button.destroy()
-            self.display_question()
-        else:
-            print("All questions were answered.")
-            self.master.correct_answers = 0
-            self.master.username = None
-            self.master.show_frame(WelcomeScreen)
+    def receive_questions(self):
+        try:
+            while True:
+                if self.master.socket:
+                    question_data = self.master.socket.recv(1024).decode()
+                    if question_data.startswith("QUESTION:"):
+                        parts = question_data.split(":")
+                        question_text = parts[1]
+                        answers = parts[2].split(",")
+                        question_data = {"question": question_text, "answers": answers}
+                        self.master.after(0, self.display_question, question_data)
+        except Exception as e:
+            print(f"Error receiving questions: {e}")
+
+    def submit_answer(self, answer):
+        try:
+            if self.master.socket:
+                self.master.socket.sendall(f"ANSWER:{answer}".encode())
+                print(f"Answer submitted: {answer}")
+        except Exception as e:
+            print(f"Error submitting answer: {e}")
 
 def connect_to_server(host, port, password, action, lobby_param=None, frame=None):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

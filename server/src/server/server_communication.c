@@ -83,6 +83,7 @@ void *process_requests(void *arg) {
             Lobby *lobby = get_lobby_by_id(context, lobby_id);
 
             if (lobby != NULL && lobby->current_players < lobby->max_players) {
+                lobby->clients[lobby->current_players] = client_message.active_socket;
                 lobby->current_players++;
                 snprintf(client_message.message, MAX_RESPONSE_LEN,
                          "JOIN_SUCCESS LOBBY_ID:%d CURRENT_PLAYERS:%d MAX_PLAYERS:%d",
@@ -123,7 +124,29 @@ void *process_requests(void *arg) {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
                      "SERVER_STATUS STATUS:Running");
             client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
+ // -----------------------SEND QUESTION TO LOBBY--------------------------
+        } else if (strncmp(client_message.message, "SEND_QUESTION", 13) == 0) {
+            int lobby_id = atoi(client_message.message + 14);
+            printf("SERVER: Received SEND_QUESTION request for lobby %d\n", lobby_id);
+            const char *question = "What is the capital of France?";
+            send_question_to_lobby(context, lobby_id, question);
+            printf("SERVER: Sent question to lobby %d\n", lobby_id);
+        }
 
+        // -----------------------PROCESS ANSWERS--------------------------
+        else if (strncmp(client_message.message, "ANSWER:", 7) == 0) {
+            char *answer = client_message.message + 7;
+            printf("Received answer from client %d: %s\n", client_message.active_socket, answer);
+
+            const char *correct_answer = "Paris";
+            if (strcmp(answer, correct_answer) == 0) {
+                const char *response = "Correct answer!";
+                send(client_message.active_socket, response, strlen(response), 0);
+            } else {
+                const char *response = "Incorrect answer!";
+                send(client_message.active_socket, response, strlen(response), 0);
+            }
+        
         // -----------------------INVALID REQUEST--------------------------
         } else {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
@@ -135,6 +158,8 @@ void *process_requests(void *arg) {
     }
     return NULL;
 }
+
+
 
 void *send_responses(void *arg) {
     ServerContext *context = (ServerContext *)arg;

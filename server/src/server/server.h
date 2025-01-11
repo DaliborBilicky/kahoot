@@ -14,12 +14,14 @@
 #define NUM_WORKERS 4
 #define REQUEST_BUFFER_CAPACITY 100
 #define RESPONSE_BUFFER_CAPACITY 100
+#define MAX_PLAYERS 10
 
 typedef struct Lobby {
     int id;
     int port;
     int current_players;
     int max_players;
+    int clients[MAX_PLAYERS];
     struct Lobby *next;
 } Lobby;
 
@@ -42,5 +44,5 @@ void server_shutdown(ServerContext *context);
 
 int create_lobby(ServerContext *context, int port);
 Lobby *get_lobby_by_id(ServerContext *context, int lobby_id);
-
+void send_question_to_lobby(ServerContext *context, int lobby_id, const char *question);
 #endif  // SERVER_H

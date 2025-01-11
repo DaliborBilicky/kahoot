@@ -34,9 +34,53 @@ void handle_lobby(int lobby_id, ServerContext *context) {
     }
 
     printf("Lobby ID: %d | Current Players: %d\n", lobby->id, lobby->current_players);
-    
+
     while (1) {
         sleep(1);
+    }
+}
+
+void send_question_to_lobby(ServerContext *context, int lobby_id, const char *question) {
+    if (!context || !question) {
+        printf("Invalid context or question\n");
+        return;
+    }
+
+    Lobby *lobby = get_lobby_by_id(context, lobby_id);
+    if (lobby == NULL) {
+        printf("Lobby with ID %d not found\n", lobby_id);
+        return;
+    }
+
+    printf("Sending question to lobby %d with %d players\n", 
+           lobby_id, lobby->current_players);
+
+  char formatted_question[MAX_REQUEST_LEN];
+
+//TEST PRE ODDELENIE LOBBYCOK
+    if(lobby_id==1){
+    snprintf(formatted_question, MAX_REQUEST_LEN, 
+             "QUESTION:%s:Paris,London,Berlin,Madrid", question);
+    } else {
+    snprintf(formatted_question, MAX_REQUEST_LEN, 
+             "QUESTION:%s:Pariiiiiiiiis,London,Berlin,Madrid", question);
+    }
+
+  
+
+    for (int i = 0; i < lobby->current_players; i++) {
+        if (lobby->clients[i] <= 0) {
+            printf("Invalid client socket at index %d\n", i);
+            continue;
+        }
+
+        if (send(lobby->clients[i], formatted_question, 
+                strlen(formatted_question), 0) < 0) {
+            printf("Failed to send question to client %d\n", lobby->clients[i]);
+        } else {
+            printf("Sent question to client %d: %s\n", 
+                   lobby->clients[i], formatted_question);
+        }
     }
 }
 
@@ -52,7 +96,7 @@ int create_lobby(ServerContext *context, int base_port) {
     new_lobby->id = lobby_id_counter++;
     new_lobby->port = new_port;
     new_lobby->current_players = 0;
-    new_lobby->max_players = 10;
+    new_lobby->max_players = MAX_PLAYERS;
     new_lobby->next = context->lobbies;
     context->lobbies = new_lobby;
 
