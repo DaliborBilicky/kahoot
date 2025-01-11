@@ -61,14 +61,14 @@ void *process_requests(void *arg) {
     while (atomic_load(&context->running)) {
         sync_buff_pop(&context->request_buffer, &client_message);
 
+        // -----------------------CREATE LOBBY--------------------------
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
-            int port = 9000; 
-            int lobby_id = create_lobby(context, port);
+            int lobby_id = create_lobby(context, context->port);
             Lobby *lobby = get_lobby_by_id(context, lobby_id);
 
             if (lobby != NULL) {
                 snprintf(client_message.message, MAX_RESPONSE_LEN,
-                         "LOBBY_CREATED ID:%d PORT:%d CURRENT_PLAYERS:%d MAX_PLAYERS:%d",
+                         "CREATE_SUCCESS LOBBY_CREATED ID:%d PORT:%d CURRENT_PLAYERS:%d MAX_PLAYERS:%d",
                          lobby->id, lobby->port, lobby->current_players, lobby->max_players);
                 client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
             } else {
@@ -76,18 +76,19 @@ void *process_requests(void *arg) {
                          "ERROR: Could not create lobby.");
                 client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
             }
-        
+
+        // -----------------------JOIN LOBBY--------------------------
         } else if (strncmp(client_message.message, "JOIN_LOBBY", 10) == 0) {
             int lobby_id = atoi(client_message.message + 11);
             Lobby *lobby = get_lobby_by_id(context, lobby_id);
 
             if (lobby != NULL && lobby->current_players < lobby->max_players) {
+                lobby->current_players++;
                 snprintf(client_message.message, MAX_RESPONSE_LEN,
                          "JOIN_SUCCESS LOBBY_ID:%d CURRENT_PLAYERS:%d MAX_PLAYERS:%d",
                          lobby_id, lobby->current_players, lobby->max_players);
                 client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
 
-                lobby->current_players++;
 
             } else if (lobby == NULL) {
                 snprintf(client_message.message, MAX_RESPONSE_LEN,
@@ -98,12 +99,32 @@ void *process_requests(void *arg) {
                          "ERROR: Lobby is full.");
                 client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
             }
+        }
 
+        // -----------------------SEND UPDATES TO GUI--------------------------
+        else if (strncmp(client_message.message, "HOST_UPDATE", 11) == 0) {
+        int lobby_id = atoi(client_message.message + 12);
+        Lobby *lobby = get_lobby_by_id(context, lobby_id);
+
+        if (lobby != NULL) {
+            snprintf(client_message.message, MAX_RESPONSE_LEN,
+                    "LOBBY_STATUS ID:%d CURRENT_PLAYERS:%d MAX_PLAYERS:%d",
+                    lobby_id, lobby->current_players, lobby->max_players);
+            client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
+
+        } else {
+            snprintf(client_message.message, MAX_RESPONSE_LEN,
+                    "ERROR: Lobby not found.");
+            client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
+        }
+
+        // -----------------------GET STATUS--------------------------
         } else if (strncmp(client_message.message, "GET_STATUS", 10) == 0) {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
                      "SERVER_STATUS STATUS:Running");
             client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
 
+        // -----------------------INVALID REQUEST--------------------------
         } else {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
                      "ERROR INVALID_REQUEST:Unknown-command");
@@ -114,7 +135,6 @@ void *process_requests(void *arg) {
     }
     return NULL;
 }
-
 
 void *send_responses(void *arg) {
     ServerContext *context = (ServerContext *)arg;

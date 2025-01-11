@@ -38,14 +38,12 @@ void handle_lobby(int lobby_id, ServerContext *context) {
     while (1) {
         sleep(1);
     }
-
-    printf("Lobby %d process ended\n", lobby_id);
-    exit(0);
 }
 
 int create_lobby(ServerContext *context, int base_port) {
     static int lobby_id_counter = 1;
     int new_port = base_port + lobby_id_counter;
+
     Lobby *new_lobby = (Lobby *)malloc(sizeof(Lobby));
     if (!new_lobby) {
         return -1;
@@ -54,7 +52,7 @@ int create_lobby(ServerContext *context, int base_port) {
     new_lobby->id = lobby_id_counter++;
     new_lobby->port = new_port;
     new_lobby->current_players = 0;
-    new_lobby->max_players = 100;
+    new_lobby->max_players = 10;
     new_lobby->next = context->lobbies;
     context->lobbies = new_lobby;
 
