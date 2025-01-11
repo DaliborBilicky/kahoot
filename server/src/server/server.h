@@ -15,11 +15,17 @@
 #define REQUEST_BUFFER_CAPACITY 100
 #define RESPONSE_BUFFER_CAPACITY 100
 
+typedef struct ThreadNode {
+    pthread_t thread_id;
+    struct ThreadNode *next;
+} ThreadNode;
+
 typedef struct ServerContext {
     SynchronizedBuffer request_buffer;
     SynchronizedBuffer response_buffer;
     char password[MAX_REQUEST_LEN];
     int passive_socket;
+    ThreadNode *thread_list_head;
     pthread_t worker_threads[NUM_WORKERS];
     pthread_t response_thread;
     pthread_t shutdown_thread;

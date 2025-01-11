@@ -33,8 +33,8 @@ void *handle_request(void *arg) {
         printf("Request from client %d: %s\n", active_socket, message);
 
         if (!authenticated) {
-            if (strncmp(message, server->password,
-                        strlen(server->password)) == 0) {
+            if (strncmp(message, server->password, strlen(server->password)) ==
+                0) {
                 authenticated = 1;
                 const char *auth_success = "AUTH_SUCCESS";
                 send(active_socket, auth_success, strlen(auth_success), 0);

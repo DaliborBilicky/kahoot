@@ -7,6 +7,37 @@
 #include "../sockets/sockets.h"
 #include "server_communication.h"
 
+void append_thread_to_list(ServerContext *self, pthread_t thread) {
+    ThreadNode *new_node = malloc(sizeof(ThreadNode));
+    if (!new_node) {
+        perror("ERROR: Failed to allocate memory for thread node");
+        return;
+    }
+    new_node->thread_id = thread;
+    new_node->next = NULL;
+
+    if (self->thread_list_head == NULL) {
+        self->thread_list_head = new_node;
+    } else {
+        ThreadNode *current = self->thread_list_head;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = new_node;
+    }
+}
+
+void join_all_threads(ServerContext *self) {
+    ThreadNode *current = self->thread_list_head;
+    while (current) {
+        pthread_join(current->thread_id, NULL);
+        ThreadNode *to_free = current;
+        current = current->next;
+        free(to_free);
+    }
+    self->thread_list_head = NULL;
+}
+
 int server_init(ServerContext *self) {
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
@@ -19,6 +50,8 @@ int server_init(ServerContext *self) {
                    sizeof(ClientMessage), &self->running);
     sync_buff_init(&self->response_buffer, RESPONSE_BUFFER_CAPACITY,
                    sizeof(ClientMessage), &self->running);
+
+    self->thread_list_head = NULL;
 
     return 0;
 }
@@ -90,8 +123,13 @@ void server_run(ServerContext *self) {
         data->server = self;
 
         pthread_t client_thread;
-        pthread_create(&client_thread, NULL, handle_request, data);
-        pthread_detach(client_thread);
+        if (pthread_create(&client_thread, NULL, handle_request, data) != 0) {
+            perror("ERROR: Failed to create client thread");
+            free(data);
+            free(active_socket);
+            continue;
+        }
+        append_thread_to_list(self, client_thread);
     }
     server_shutdown(self);
 }
@@ -105,6 +143,8 @@ void server_shutdown(ServerContext *self) {
     for (int i = 0; i < NUM_WORKERS; i++) {
         pthread_join(self->worker_threads[i], NULL);
     }
+
+    join_all_threads(self);
 
     sync_buff_destroy(&self->request_buffer);
     sync_buff_destroy(&self->response_buffer);
