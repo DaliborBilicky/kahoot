@@ -32,3 +32,10 @@ void sync_list_for_each(SyncLinkedList *self,
     linked_list_for_each(&self->list, process_item, in, out, err);
     pthread_mutex_unlock(&self->lock);
 }
+
+void *sync_list_get_tail_data(SyncLinkedList *self) {
+    pthread_mutex_lock(&self->lock);
+    void *data = linked_list_get_tail_data(&self->list);
+    pthread_mutex_unlock(&self->lock);
+    return data;
+}

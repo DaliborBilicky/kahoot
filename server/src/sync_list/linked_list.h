@@ -24,5 +24,6 @@ void linked_list_add(LinkedList *self, void *data);
 void linked_list_for_each(LinkedList *self,
                           void (*process_item)(void *, void *, void *, void *),
                           void *in, void *out, void *err);
+void *linked_list_get_tail_data(LinkedList *self);
 
 #endif  // LINKED_LIST_H

@@ -16,7 +16,6 @@ int main(int argc, char *argv[]) {
     LobbyManager lobby_manager;
     ServerContext server;
     strncpy(server.password, password, MAX_REQUEST_LEN - 1);
-    atomic_store(&server.running, 1);
     server.port = server_port;
     if (server_init(&server, &lobby_manager) < 0) {
         fprintf(stderr, "ERROR: Failed to initialize server\n");

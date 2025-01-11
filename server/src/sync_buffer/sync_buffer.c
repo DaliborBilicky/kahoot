@@ -45,7 +45,7 @@ void sync_buff_pop(SynchronizedBuffer* self, void* output) {
     pthread_mutex_unlock(&self->mutex);
 }
 
-void sync_buffer_stop(SynchronizedBuffer* self) {
+void sync_buff_stop(SynchronizedBuffer* self) {
     pthread_mutex_lock(&self->mutex);
     pthread_cond_broadcast(&self->consume);
     pthread_cond_broadcast(&self->produce);

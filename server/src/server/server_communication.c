@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../lobby/lobby.h"
+
 void *handle_request(void *arg) {
     RequestThreadData *data = (RequestThreadData *)arg;
     ServerContext *server = data->server;
@@ -62,9 +64,19 @@ void *process_requests(void *arg) {
         sync_buff_pop(&server->request_buffer, &client_message);
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
-            snprintf(client_message.message, MAX_RESPONSE_LEN,
-                     "LOBBY_CREATED ID:%d", server->port);
-            client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
+            int lobby_id = create_lobby(server->lobby_manager, server->port);
+            Lobby *lobby = get_lobby_by_id(server->lobby_manager, lobby_id);
+
+            if (lobby != NULL) {
+                snprintf(client_message.message, MAX_RESPONSE_LEN,
+                         "LOBBY_CREATED ID:%d", lobby->id);
+                client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
+            } else {
+                snprintf(client_message.message, MAX_RESPONSE_LEN,
+                         "ERROR: Could not create lobby.");
+                client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
+            }
+
         } else {
             snprintf(client_message.message, MAX_RESPONSE_LEN,
                      "ERROR INVALID_REQUEST:Unknown-command");

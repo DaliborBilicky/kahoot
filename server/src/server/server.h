@@ -12,7 +12,7 @@
 
 #define MAX_REQUEST_LEN 1024
 #define MAX_RESPONSE_LEN 256
-#define NUM_WORKERS 4
+#define POOL_VOLUME 4
 #define REQUEST_BUFFER_CAPACITY 100
 #define RESPONSE_BUFFER_CAPACITY 100
 
@@ -28,7 +28,7 @@ typedef struct ServerContext {
     char password[MAX_REQUEST_LEN];
     int passive_socket;
     ThreadNode *thread_list_head;
-    pthread_t worker_threads[NUM_WORKERS];
+    pthread_t thread_pool[POOL_VOLUME];
     pthread_t response_thread;
     pthread_t shutdown_thread;
     int port;

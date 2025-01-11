@@ -50,3 +50,5 @@ void linked_list_for_each(LinkedList *self,
         current = current->next;
     }
 }
+
+void *linked_list_get_tail_data(LinkedList *self) { return self->tail->data; }

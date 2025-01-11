@@ -39,6 +39,7 @@ void join_all_threads(ServerContext *self) {
 }
 
 int server_init(ServerContext *self, LobbyManager *lobby_manager) {
+    atomic_store(&self->running, 1);
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
         return -1;
@@ -94,8 +95,8 @@ void server_run(ServerContext *self) {
     pthread_create(&self->response_thread, NULL, send_responses, self);
     pthread_create(&self->shutdown_thread, NULL, shutdown_listener, self);
 
-    for (int i = 0; i < NUM_WORKERS; i++) {
-        pthread_create(&self->worker_threads[i], NULL, process_requests, self);
+    for (int i = 0; i < POOL_VOLUME; i++) {
+        pthread_create(&self->thread_pool[i], NULL, process_requests, self);
     }
 
     while (atomic_load(&self->running)) {
@@ -135,15 +136,15 @@ void server_run(ServerContext *self) {
 }
 
 void server_shutdown(ServerContext *self) {
-    lobby_destroy(self->lobby_manager);
+    lobby_manager_destroy(self->lobby_manager);
 
-    sync_buffer_stop(&self->request_buffer);
-    sync_buffer_stop(&self->response_buffer);
+    sync_buff_stop(&self->request_buffer);
+    sync_buff_stop(&self->response_buffer);
 
     pthread_join(self->response_thread, NULL);
     pthread_join(self->shutdown_thread, NULL);
-    for (int i = 0; i < NUM_WORKERS; i++) {
-        pthread_join(self->worker_threads[i], NULL);
+    for (int i = 0; i < POOL_VOLUME; i++) {
+        pthread_join(self->thread_pool[i], NULL);
     }
 
     join_all_threads(self);
