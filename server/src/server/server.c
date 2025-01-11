@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../lobby/lobby.h"
 #include "../sockets/sockets.h"
 #include "server_communication.h"
 
@@ -52,6 +53,7 @@ int server_init(ServerContext *self) {
                    sizeof(ClientMessage), &self->running);
 
     self->thread_list_head = NULL;
+    print_hi();
 
     return 0;
 }
