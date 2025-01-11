@@ -4,7 +4,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../lobby/lobby.h"
 #include "../sockets/sockets.h"
 #include "server_communication.h"
 
@@ -39,7 +38,7 @@ void join_all_threads(ServerContext *self) {
     self->thread_list_head = NULL;
 }
 
-int server_init(ServerContext *self) {
+int server_init(ServerContext *self, LobbyManager *lobby_manager) {
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
         return -1;
@@ -53,7 +52,6 @@ int server_init(ServerContext *self) {
                    sizeof(ClientMessage), &self->running);
 
     self->thread_list_head = NULL;
-    print_hi();
 
     return 0;
 }
@@ -137,6 +135,8 @@ void server_run(ServerContext *self) {
 }
 
 void server_shutdown(ServerContext *self) {
+    lobby_destroy(self->lobby_manager);
+
     sync_buffer_stop(&self->request_buffer);
     sync_buffer_stop(&self->response_buffer);
 
