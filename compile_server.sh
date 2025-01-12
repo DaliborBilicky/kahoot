@@ -4,4 +4,4 @@ cd ./server/build/
 cmake ..
 make 
 cd ../../
-./server/build/src/kahoot_server
+./server/build/src/kahoot_server 8080 abcd

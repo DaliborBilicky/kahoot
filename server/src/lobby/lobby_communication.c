@@ -75,6 +75,7 @@ void* handle_admin(void* arg) {
                 i++;
             }
 
+            question_write(&lobby->question, &question);
             free(message_copy);
             send(active_socket, "QUESTION_RECIEVED", 17, 0);
         } else if (strncmp(buffer, "GET_WINNER", 11) == 0) {
