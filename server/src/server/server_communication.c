@@ -64,12 +64,12 @@ void *process_requests(void *arg) {
         sync_buff_pop(&server->request_buffer, &client_message);
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
-            int lobby_id = create_lobby(server->lobby_manager, server->port);
-            Lobby *lobby = get_lobby_by_id(server->lobby_manager, lobby_id);
+            int lobby_id =
+                lobby_manager_create_lobby(server->lobby_manager, server->port);
 
-            if (lobby != NULL) {
+            if (lobby_id > 0) {
                 snprintf(client_message.message, MAX_RESPONSE_LEN,
-                         "LOBBY_CREATED ID:%d", lobby->id);
+                         "LOBBY_CREATED ID:%d", lobby_id);
                 client_message.message[MAX_RESPONSE_LEN - 1] = '\0';
             } else {
                 snprintf(client_message.message, MAX_RESPONSE_LEN,

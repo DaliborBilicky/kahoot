@@ -1,12 +1,24 @@
 #include "lobby.h"
 
+#include <netinet/in.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "../sockets/sockets.h"
+#include "lobby_communication.h"
+
+void extract_nickname(const char *message, char *output) {
+    const char *nickname_start = strstr(message, "NICK:");
+    if (nickname_start) {
+        nickname_start += 5;
+        output = strdup(nickname_start);
+    }
+}
 
 void lobby_manager_init(LobbyManager *self) {
     sync_list_init(&self->lobby_list, sizeof(Lobby));
+    atomic_store(&self->lobby_id_counter, 1);
 }
 
 void lobby_manager_destroy(LobbyManager *self) {
@@ -20,17 +32,37 @@ int lobby_init(Lobby *self, int base_port, int lobby_id_counter) {
     self->id = new_port;
     self->port = new_port;
     self->current_players = 0;
-    self->max_players = 100;
 
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
         return -1;
     }
 
+    self->thread_list_head = NULL;
+
     return 0;
 }
 
-void lobby_shutdown(Lobby *self) { atomic_store(&self->running, 0); }
+void lobby_shutdown(Lobby *self) {
+    atomic_store(&self->running, 0);
+
+    int dummy_socket = 0;
+    while ((dummy_socket = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
+        struct sockaddr_in server_addr;
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(self->port);
+        server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+        if (connect(dummy_socket, (struct sockaddr *)&server_addr,
+                    sizeof(server_addr)) < 0) {
+            perror("ERROR: Failed to connect dummy socket");
+        }
+        close(dummy_socket);
+    }
+    join_all_threads(self->thread_list_head);
+    pthread_join(self->admin_thread, NULL);
+    close(self->passive_socket);
+}
 
 void find_lobby_by_id(void *node, void *in, void *out, void *err) {
     Lobby *currentProcess = (Lobby *)((LinkedListNode *)node)->data;
@@ -52,9 +84,7 @@ void lobby_run(Lobby *self) {
         printf("Error: Lobby is null.\n");
         exit(1);
     }
-    printf("Lobby ID: %d\n", self->id);
-
-    pthread_create(&self->super_user_thread, NULL, handle_super_user, self);
+    printf("Lobby running ID: %d\n", self->id);
 
     while (atomic_load(&self->running)) {
         int *active_socket = malloc(sizeof(int));
@@ -69,28 +99,60 @@ void lobby_run(Lobby *self) {
             continue;
         }
 
-        PlayerThreadData *player = malloc(sizeof(PlayerThreadData));
-        if (!player) {
+        LobbyThreadData *data = malloc(sizeof(LobbyThreadData));
+        if (!data) {
             perror("ERROR: Failed to allocate memory for RequestThreadData");
             close(*active_socket);
             free(active_socket);
             continue;
         }
 
-        player->active_socket = active_socket;
-        player->lobby = self;
-        player->score = 0;
-        strncpy(player->nickname, "Player1", MAX_NICKNAME_LEN);
-        player->nickname[MAX_NICKNAME_LEN - 1] = '\0';
+        char message[MAX_REQUEST_LEN] = "";
+        memset(message, 0, MAX_REQUEST_LEN);
+        ssize_t bytes_read = read(*active_socket, message, MAX_REQUEST_LEN - 1);
 
-        pthread_t client_thread;
-        if (pthread_create(&client_thread, NULL, handle_request, player) != 0) {
-            perror("ERROR: Failed to create client thread");
-            free(player);
-            free(active_socket);
+        if (bytes_read <= 0) {
+            printf("Client disconnected: %d\n", *active_socket);
+            close(*active_socket);
             continue;
         }
-        // add to list of threads
+
+        message[bytes_read] = '\0';
+        data->lobby = self;
+        data->active_socket = active_socket;
+        memset(data->nick, 0, MAX_NICKNAME_LEN);
+        if (strncmp(message, "A ", 2) == 0) {
+            printf("Super user connected: %d\n", *active_socket);
+
+            if (pthread_create(&self->admin_thread, NULL, handle_admin, data) !=
+                0) {
+                perror("ERROR: Failed to create super user thread");
+                close(*active_socket);
+                free(active_socket);
+                free(data);
+            }
+        } else if (strncmp(message, "P ", 2) == 0) {
+            printf("Player connected: %d\n", *active_socket);
+
+            pthread_t player_thread;
+            extract_nickname(message, data->nick);
+            data->nick[MAX_NICKNAME_LEN - 1] = '\0';
+            if (pthread_create(&player_thread, NULL, handle_player, data) !=
+                0) {
+                perror("ERROR: Failed to create client thread");
+                close(*active_socket);
+                free(active_socket);
+                free(data);
+            } else {
+                append_thread_to_list(self->thread_list_head, player_thread);
+                self->current_players++;
+            }
+        } else {
+            printf("Invalid request from client: %d\n", *active_socket);
+            close(*active_socket);
+            free(active_socket);
+            free(data);
+        }
     }
     lobby_shutdown(self);
 
@@ -106,7 +168,8 @@ int lobby_manager_create_lobby(LobbyManager *self, int base_port) {
     }
 
     Lobby new_lobby;
-    if (lobby_init(&new_lobby, base_port, self->lobby_id_counter) < 0) {
+    if (lobby_init(&new_lobby, base_port,
+                   atomic_fetch_add(&self->lobby_id_counter, 1)) < 0) {
         fprintf(stderr, "ERROR: Failed to create lobby\n");
         return -1;
     }

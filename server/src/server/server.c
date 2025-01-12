@@ -1,5 +1,6 @@
 #include "server.h"
 
+#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -7,39 +8,9 @@
 #include "../sockets/sockets.h"
 #include "server_communication.h"
 
-void append_thread_to_list(ServerContext *self, pthread_t thread) {
-    ThreadNode *new_node = malloc(sizeof(ThreadNode));
-    if (!new_node) {
-        perror("ERROR: Failed to allocate memory for thread node");
-        return;
-    }
-    new_node->thread_id = thread;
-    new_node->next = NULL;
-
-    if (self->thread_list_head == NULL) {
-        self->thread_list_head = new_node;
-    } else {
-        ThreadNode *current = self->thread_list_head;
-        while (current->next) {
-            current = current->next;
-        }
-        current->next = new_node;
-    }
-}
-
-void join_all_threads(ServerContext *self) {
-    ThreadNode *current = self->thread_list_head;
-    while (current) {
-        pthread_join(current->thread_id, NULL);
-        ThreadNode *to_free = current;
-        current = current->next;
-        free(to_free);
-    }
-    self->thread_list_head = NULL;
-}
-
 int server_init(ServerContext *self, LobbyManager *lobby_manager) {
     atomic_store(&self->running, 1);
+    self->lobby_manager = lobby_manager;
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
         return -1;
@@ -68,22 +39,17 @@ void *shutdown_listener(void *arg) {
             printf("Shutdown command received.\n");
             atomic_store(&self->running, 0);
 
-            int dummy_socket = socket(AF_INET, SOCK_STREAM, 0);
-            if (dummy_socket < 0) {
-                perror("ERROR: Failed to create dummy socket");
-                return NULL;
-            }
+            int dummy_socket = 0;
+            while ((dummy_socket = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
+                struct sockaddr_in server_addr;
+                server_addr.sin_family = AF_INET;
+                server_addr.sin_port = htons(self->port);
+                server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-            struct sockaddr_in server_addr;
-            server_addr.sin_family = AF_INET;
-            server_addr.sin_port = htons(self->port);
-            server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-            if (connect(dummy_socket, (struct sockaddr *)&server_addr,
-                        sizeof(server_addr)) < 0) {
-                perror("ERROR: Failed to connect dummy socket");
-                close(dummy_socket);
-            } else {
+                if (connect(dummy_socket, (struct sockaddr *)&server_addr,
+                            sizeof(server_addr)) < 0) {
+                    perror("ERROR: Failed to connect dummy socket");
+                }
                 close(dummy_socket);
             }
         }
@@ -130,7 +96,7 @@ void server_run(ServerContext *self) {
             free(active_socket);
             continue;
         }
-        append_thread_to_list(self, client_thread);
+        append_thread_to_list(self->thread_list_head, client_thread);
     }
     server_shutdown(self);
 }
@@ -147,7 +113,7 @@ void server_shutdown(ServerContext *self) {
         pthread_join(self->thread_pool[i], NULL);
     }
 
-    join_all_threads(self);
+    join_all_threads(self->thread_list_head);
 
     sync_buff_destroy(&self->request_buffer);
     sync_buff_destroy(&self->response_buffer);

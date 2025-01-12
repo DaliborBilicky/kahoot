@@ -26,4 +26,12 @@ void linked_list_for_each(LinkedList *self,
                           void *in, void *out, void *err);
 void *linked_list_get_tail_data(LinkedList *self);
 
+typedef struct ThreadNode {
+    pthread_t thread_id;
+    struct ThreadNode *next;
+} ThreadNode;
+
+void append_thread_to_list(ThreadNode *head, pthread_t thread);
+void join_all_threads(ThreadNode *head);
+
 #endif  // LINKED_LIST_H

@@ -2,33 +2,28 @@
 #define LOBBY_H
 
 #include <pthread.h>
+#include <stdatomic.h>
 
-#include "../sync_buffer/sync_buffer.c"
 #include "../sync_list/sync_list.h"
 
 #define MAX_NICKNAME_LEN 50
+#define MAX_REQUEST_LEN 1024
+#define MAX_RESPONSE_LEN 256
 
 typedef struct Lobby {
     int id;
     int port;
     int current_players;
-    int max_players;
-    atomic_bool running;
     int passive_socket;
-    pthread_t super_user_thread;
+    pthread_t admin_thread;
+    ThreadNode *thread_list_head;
+    atomic_bool running;
 } Lobby;
 
 typedef struct LobbyManager {
     SyncLinkedList lobby_list;
-    int lobby_id_counter;
+    atomic_int lobby_id_counter;
 } LobbyManager;
-
-typedef struct PlayerThreadData {
-    Lobby *lobby;
-    int *active_socket;
-    int score;
-    char nickname[MAX_NICKNAME_LEN];
-} PlayerThreadData;
 
 void lobby_manager_init(LobbyManager *self);
 void lobby_manager_destroy(LobbyManager *self);
