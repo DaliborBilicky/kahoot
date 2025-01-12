@@ -76,6 +76,7 @@ void* handle_admin(void* arg) {
             }
 
             free(message_copy);
+            send(active_socket, "QUESTION_RECIEVED", 17, 0);
         } else if (strncmp(buffer, "GET_WINNER", 11) == 0) {
             Player player;
             find_best_score(&lobby->players, &player);
