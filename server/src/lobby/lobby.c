@@ -46,17 +46,22 @@ int lobby_init(Lobby *self, int base_port, int lobby_id_counter) {
 void lobby_shutdown(Lobby *self) {
     atomic_store(&self->running, 0);
 
-    int dummy_socket = 0;
-    while ((dummy_socket = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
-        struct sockaddr_in server_addr;
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(self->port);
-        server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    int dummy_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (dummy_socket < 0) {
+        perror("ERROR: Failed to create dummy socket");
+        return;
+    }
 
-        if (connect(dummy_socket, (struct sockaddr *)&server_addr,
-                    sizeof(server_addr)) < 0) {
-            perror("ERROR: Failed to connect dummy socket");
-        }
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(self->port);
+    server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    if (connect(dummy_socket, (struct sockaddr *)&server_addr,
+                sizeof(server_addr)) < 0) {
+        perror("ERROR: Failed to connect dummy socket");
+        close(dummy_socket);
+    } else {
         close(dummy_socket);
     }
     join_all_threads(self->thread_list_head);

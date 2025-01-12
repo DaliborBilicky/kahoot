@@ -10,7 +10,6 @@
 
 int server_init(ServerContext *self, LobbyManager *lobby_manager) {
     atomic_store(&self->running, 1);
-    self->lobby_manager = lobby_manager;
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
         return -1;
@@ -39,17 +38,22 @@ void *shutdown_listener(void *arg) {
             printf("Shutdown command received.\n");
             atomic_store(&self->running, 0);
 
-            int dummy_socket = 0;
-            while ((dummy_socket = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
-                struct sockaddr_in server_addr;
-                server_addr.sin_family = AF_INET;
-                server_addr.sin_port = htons(self->port);
-                server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+            int dummy_socket = socket(AF_INET, SOCK_STREAM, 0);
+            if (dummy_socket < 0) {
+                perror("ERROR: Failed to create dummy socket");
+                return NULL;
+            }
 
-                if (connect(dummy_socket, (struct sockaddr *)&server_addr,
-                            sizeof(server_addr)) < 0) {
-                    perror("ERROR: Failed to connect dummy socket");
-                }
+            struct sockaddr_in server_addr;
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_port = htons(self->port);
+            server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+            if (connect(dummy_socket, (struct sockaddr *)&server_addr,
+                        sizeof(server_addr)) < 0) {
+                perror("ERROR: Failed to connect dummy socket");
+                close(dummy_socket);
+            } else {
                 close(dummy_socket);
             }
         }
