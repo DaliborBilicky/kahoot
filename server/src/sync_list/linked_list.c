@@ -55,7 +55,7 @@ void linked_list_for_each(LinkedList *self,
 
 void *linked_list_get_tail_data(LinkedList *self) { return self->tail->data; }
 
-void append_thread_to_list(ThreadNode *head, pthread_t thread) {
+void append_thread_to_list(ThreadNode **head, pthread_t thread) {
     ThreadNode *new_node = malloc(sizeof(ThreadNode));
     if (!new_node) {
         perror("ERROR: Failed to allocate memory for thread node");
@@ -64,10 +64,10 @@ void append_thread_to_list(ThreadNode *head, pthread_t thread) {
     new_node->thread_id = thread;
     new_node->next = NULL;
 
-    if (head == NULL) {
-        head = new_node;
+    if (*head == NULL) {
+        *head = new_node;
     } else {
-        ThreadNode *current = head;
+        ThreadNode *current = *head;
         while (current->next) {
             current = current->next;
         }
@@ -75,13 +75,13 @@ void append_thread_to_list(ThreadNode *head, pthread_t thread) {
     }
 }
 
-void join_all_threads(ThreadNode *head) {
-    ThreadNode *current = head;
+void join_all_threads(ThreadNode **head) {
+    ThreadNode *current = *head;
     while (current) {
         pthread_join(current->thread_id, NULL);
         ThreadNode *to_free = current;
         current = current->next;
         free(to_free);
     }
-    head = NULL;
+    *head = NULL;
 }

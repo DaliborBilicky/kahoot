@@ -10,6 +10,8 @@
 
 int server_init(ServerContext *self, LobbyManager *lobby_manager) {
     atomic_store(&self->running, 1);
+    self->lobby_manager = lobby_manager;
+    lobby_manager_init(self->lobby_manager);
     self->passive_socket = passive_socket_init(self->port);
     if (self->passive_socket < 0) {
         return -1;
@@ -100,7 +102,7 @@ void server_run(ServerContext *self) {
             free(active_socket);
             continue;
         }
-        append_thread_to_list(self->thread_list_head, client_thread);
+        append_thread_to_list(&self->thread_list_head, client_thread);
     }
     server_shutdown(self);
 }
@@ -117,7 +119,7 @@ void server_shutdown(ServerContext *self) {
         pthread_join(self->thread_pool[i], NULL);
     }
 
-    join_all_threads(self->thread_list_head);
+    join_all_threads(&self->thread_list_head);
 
     sync_buff_destroy(&self->request_buffer);
     sync_buff_destroy(&self->response_buffer);

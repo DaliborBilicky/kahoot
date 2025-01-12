@@ -7,9 +7,9 @@
 
 #include "linked_list.h"
 
-typedef struct {
+typedef struct SyncLinkedList {
     LinkedList list;
-    pthread_mutex_t lock;
+    pthread_mutex_t muttex;
 } SyncLinkedList;
 
 void sync_list_init(SyncLinkedList *self, size_t data_size);

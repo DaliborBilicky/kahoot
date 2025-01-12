@@ -64,7 +64,7 @@ void lobby_shutdown(Lobby *self) {
     } else {
         close(dummy_socket);
     }
-    join_all_threads(self->thread_list_head);
+    join_all_threads(&self->thread_list_head);
     pthread_join(self->admin_thread, NULL);
     close(self->passive_socket);
 }
@@ -149,7 +149,7 @@ void lobby_run(Lobby *self) {
                 free(active_socket);
                 free(data);
             } else {
-                append_thread_to_list(self->thread_list_head, player_thread);
+                append_thread_to_list(&self->thread_list_head, player_thread);
                 self->current_players++;
             }
         } else {
@@ -166,6 +166,7 @@ void lobby_run(Lobby *self) {
 }
 
 int lobby_manager_create_lobby(LobbyManager *self, int base_port) {
+    printf("lobby create\n");
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ERROR: Failed to fork process\n");

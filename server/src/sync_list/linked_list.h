@@ -31,7 +31,7 @@ typedef struct ThreadNode {
     struct ThreadNode *next;
 } ThreadNode;
 
-void append_thread_to_list(ThreadNode *head, pthread_t thread);
-void join_all_threads(ThreadNode *head);
+void append_thread_to_list(ThreadNode **head, pthread_t thread);
+void join_all_threads(ThreadNode **head);
 
 #endif  // LINKED_LIST_H
