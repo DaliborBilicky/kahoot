@@ -10,7 +10,7 @@
 typedef struct Question {
     char text[MAX_TEXT_LEN];
     char choices[MAX_CHOICES][MAX_TEXT_LEN];
-    int answear;
+    int answer;
 } Question;
 
 typedef struct SyncQuestion {

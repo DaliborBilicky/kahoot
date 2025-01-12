@@ -6,7 +6,6 @@
 typedef struct LobbyThreadData {
     Lobby* lobby;
     int* active_socket;
-    char nick[MAX_NICKNAME_LEN];
 } LobbyThreadData;
 
 void* handle_admin(void* arg);
