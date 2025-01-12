@@ -5,4 +5,4 @@ add_library(server STATIC
 
 target_include_directories(server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(server PRIVATE sync_buffer sockets)
+target_link_libraries(server PRIVATE sync_buffer sockets lobby sync_list)

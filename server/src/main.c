@@ -13,16 +13,16 @@ int main(int argc, char *argv[]) {
     int server_port = atoi(argv[1]);
     const char *password = argv[2];
 
-    ServerContext context;
-    strncpy(context.password, password, MAX_REQUEST_LEN - 1);
-    atomic_store(&context.running, 1);
-    context.port = server_port;
-    if (server_init(&context) < 0) {
+    LobbyManager lobby_manager;
+    ServerContext server;
+    strncpy(server.password, password, MAX_REQUEST_LEN - 1);
+    server.port = server_port;
+    if (server_init(&server, &lobby_manager) < 0) {
         fprintf(stderr, "ERROR: Failed to initialize server\n");
         return EXIT_FAILURE;
     }
 
-    server_run(&context);
+    server_run(&server);
 
     return EXIT_SUCCESS;
 }
