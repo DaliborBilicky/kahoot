@@ -1,4 +1,6 @@
 import customtkinter as ctk
+from tkinter import filedialog, messagebox
+
 import socket
 import threading
 import time
@@ -108,7 +110,12 @@ class LobbyHostScreen(ctk.CTkFrame):
         self.answer_count_label.pack(pady=10)
         ctk.CTkButton(self, text="Start Quiz", command=self.start_quiz).pack(pady=20)
         ctk.CTkButton(self, text="Exit Lobby", command=lambda: parent.show_frame(WelcomeScreen)).pack(pady=10)
-
+        self.load_questions_button = ctk.CTkButton(
+            self, 
+            text="Load Questions", 
+            command=self.load_questions
+        )
+        self.load_questions_button.pack(pady=10)
         self.user_count = 0
         self.answer_count = 0
 
@@ -151,6 +158,40 @@ class LobbyHostScreen(ctk.CTkFrame):
                 except Exception as e:
                     print(f"Error starting quiz: {e}")
             self.master.show_frame(QuestionScreen)
+            
+    def load_questions(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Text Files", "*.txt")]
+        )
+        if file_path:
+            try:
+                with open(file_path, 'r') as file:
+                    lines = file.readlines()
+                    i = 0
+                    while i < len(lines):
+                        if len(lines[i].strip()) == 0:
+                            i += 1
+                            continue
+                            
+                        question = lines[i].strip()
+                        answers = lines[i+1].strip().split('|')
+                        correct_answer = int(lines[i+2].strip())
+                        
+                        # Format: LOAD_QUESTION;<lobby_id>;<question>;<ans1>|<ans2>|<ans3>|<ans4>;<correct>
+                        message = f"LOAD_QUESTION;{self.master.lobby_id};{question};{lines[i+1].strip()};{correct_answer}"
+                        self.master.socket.sendall(message.encode())
+                        response = self.master.socket.recv(1024).decode()
+                        
+                        if "ERROR" in response:
+                            messagebox.showerror("Error", f"Failed to load question: {question}")
+                            return
+                            
+                        i += 3
+                    
+                messagebox.showinfo("Success", "Questions loaded successfully!")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load questions: {str(e)}")
 
 class QuestionScreen(ctk.CTkFrame):
     def __init__(self, parent):

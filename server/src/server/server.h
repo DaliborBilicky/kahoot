@@ -15,6 +15,15 @@
 #define REQUEST_BUFFER_CAPACITY 100
 #define RESPONSE_BUFFER_CAPACITY 100
 #define MAX_PLAYERS 10
+#define MAX_QUESTION_LENGTH 256
+#define MAX_ANSWER_LENGTH 64
+#define MAX_ANSWERS 4
+
+typedef struct Question {
+    char question[MAX_QUESTION_LENGTH];
+    char answers[MAX_ANSWERS][MAX_ANSWER_LENGTH];
+    int correct_answer;
+} Question;
 
 typedef struct Lobby {
     int id;
@@ -22,6 +31,9 @@ typedef struct Lobby {
     int current_players;
     int max_players;
     int clients[MAX_PLAYERS];
+    Question *questions;
+    int num_questions;
+    int current_question;
     struct Lobby *next;
 } Lobby;
 
@@ -37,6 +49,9 @@ typedef struct ServerContext {
     int port;
     atomic_bool running;
 } ServerContext;
+
+
+int load_questions(Lobby *lobby, const char *questions_data);
 
 int server_init(ServerContext *context);
 void server_run(ServerContext *context);

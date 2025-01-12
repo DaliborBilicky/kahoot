@@ -1,9 +1,9 @@
 #include "server.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 #include "../sockets/sockets.h"
 #include "server_communication.h"
@@ -22,7 +22,7 @@ int server_init(ServerContext *context) {
                    sizeof(ClientMessage), &context->running);
 
     context->lobbies = NULL;
-    
+
     return 0;
 }
 
@@ -33,16 +33,18 @@ void handle_lobby(int lobby_id, ServerContext *context) {
         exit(1);
     }
 
-    printf("Lobby ID: %d | Current Players: %d\n", lobby->id, lobby->current_players);
+    printf("Lobby ID: %d | Current Players: %d\n", lobby->id,
+           lobby->current_players);
 
     while (1) {
         sleep(1);
     }
 }
 
-void send_question_to_lobby(ServerContext *context, int lobby_id, const char *question) {
-    if (!context || !question) {
-        printf("Invalid context or question\n");
+void send_question_to_lobby(ServerContext *context, int lobby_id,
+                            const char *question) {
+    if (!context) {
+        printf("Invalid context\n");
         return;
     }
 
@@ -52,36 +54,44 @@ void send_question_to_lobby(ServerContext *context, int lobby_id, const char *qu
         return;
     }
 
-    printf("Sending question to lobby %d with %d players\n", 
-           lobby_id, lobby->current_players);
+    printf("DEBUG: Lobby %d has %d questions\n", lobby_id,
+           lobby->num_questions);
 
-  char formatted_question[MAX_REQUEST_LEN];
-
-//TEST PRE ODDELENIE LOBBYCOK
-    if(lobby_id==1){
-    snprintf(formatted_question, MAX_REQUEST_LEN, 
-             "QUESTION:%s:Paris,London,Berlin,Madrid", question);
-    } else {
-    snprintf(formatted_question, MAX_REQUEST_LEN, 
-             "QUESTION:%s:Pariiiiiiiiis,London,Berlin,Madrid", question);
+    if (lobby->num_questions == 0 || !lobby->questions) {
+        printf("No questions loaded for lobby %d\n", lobby_id);
+        return;
     }
 
-  
+    if (lobby->current_question >= lobby->num_questions) {
+        printf("All questions have been sent\n");
+        return;
+    }
+
+    Question *current = &lobby->questions[lobby->current_question];
+    char formatted_question[MAX_REQUEST_LEN];
+
+    snprintf(formatted_question, MAX_REQUEST_LEN, "QUESTION:%s:%s,%s,%s,%s",
+             current->question, current->answers[0], current->answers[1],
+             current->answers[2], current->answers[3]);
+
+    printf("Sending question %d to lobby %d\n", lobby->current_question + 1,
+           lobby_id);
 
     for (int i = 0; i < lobby->current_players; i++) {
         if (lobby->clients[i] <= 0) {
-            printf("Invalid client socket at index %d\n", i);
             continue;
         }
 
-        if (send(lobby->clients[i], formatted_question, 
-                strlen(formatted_question), 0) < 0) {
+        if (send(lobby->clients[i], formatted_question,
+                 strlen(formatted_question), 0) < 0) {
             printf("Failed to send question to client %d\n", lobby->clients[i]);
         } else {
-            printf("Sent question to client %d: %s\n", 
-                   lobby->clients[i], formatted_question);
+            printf("Sent question to client %d: %s\n", lobby->clients[i],
+                   formatted_question);
         }
     }
+
+    lobby->current_question++;
 }
 
 int create_lobby(ServerContext *context, int base_port) {
@@ -126,7 +136,7 @@ Lobby *get_lobby_by_id(ServerContext *context, int lobby_id) {
     }
     return NULL;
 }
-    
+
 void *shutdown_listener(void *arg) {
     ServerContext *context = (ServerContext *)arg;
     int command = 0;
