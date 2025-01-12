@@ -15,6 +15,7 @@ void* handle_admin(void* arg) {
 
     printf("IN admin thread\n");
 
+    close(active_socket);
     return NULL;
 }
 
@@ -29,5 +30,6 @@ void* handle_player(void* arg) {
 
     printf("IN player thread\n");
 
+    close(active_socket);
     return NULL;
 }

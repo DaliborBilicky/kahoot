@@ -21,10 +21,6 @@ void lobby_manager_init(LobbyManager *self) {
     atomic_store(&self->lobby_id_counter, 1);
 }
 
-void lobby_manager_destroy(LobbyManager *self) {
-    sync_list_destroy(&self->lobby_list);
-}
-
 int lobby_init(Lobby *self, int base_port, int lobby_id_counter) {
     atomic_store(&self->running, 1);
     int new_port = base_port + lobby_id_counter;
@@ -69,19 +65,20 @@ void lobby_shutdown(Lobby *self) {
     close(self->passive_socket);
 }
 
-void find_lobby_by_id(void *node, void *in, void *out, void *err) {
-    Lobby *currentProcess = (Lobby *)((LinkedListNode *)node)->data;
-    int *targetId = (int *)in;
-
-    if (currentProcess->id == *targetId) {
-        *(Lobby **)out = currentProcess;
+void lobby_shutdown_lambda(void *node, void *in, void *out, void *err) {
+    Lobby *currentLobby = (Lobby *)((LinkedListNode *)node)->data;
+    if (currentLobby) {
+        lobby_shutdown(currentLobby);
     }
 }
 
-Lobby *get_lobby_by_id(SyncLinkedList *lobby_list, int lobby_id) {
-    Lobby *lobby = NULL;
-    sync_list_for_each(lobby_list, find_lobby_by_id, &lobby_id, &lobby, NULL);
-    return lobby;
+void shutdown_all_lobbies(SyncLinkedList *lobby_list) {
+    sync_list_for_each(lobby_list, lobby_shutdown_lambda, NULL, NULL, NULL);
+}
+
+void lobby_manager_destroy(LobbyManager *self) {
+    shutdown_all_lobbies(&self->lobby_list);
+    sync_list_destroy(&self->lobby_list);
 }
 
 void lobby_run(Lobby *self) {
@@ -126,7 +123,7 @@ void lobby_run(Lobby *self) {
         data->lobby = self;
         data->active_socket = active_socket;
         memset(data->nick, 0, MAX_NICKNAME_LEN);
-        if (strncmp(message, "A ", 2) == 0) {
+        if (strncmp(message, "A JOIN_LOBBY", 12) == 0) {
             printf("Super user connected: %d\n", *active_socket);
 
             if (pthread_create(&self->admin_thread, NULL, handle_admin, data) !=
@@ -136,7 +133,7 @@ void lobby_run(Lobby *self) {
                 free(active_socket);
                 free(data);
             }
-        } else if (strncmp(message, "P ", 2) == 0) {
+        } else if (strncmp(message, "P JOIN_LOBBY", 12) == 0) {
             printf("Player connected: %d\n", *active_socket);
 
             pthread_t player_thread;
