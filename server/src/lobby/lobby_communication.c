@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 void* handle_admin(void* arg) {
@@ -14,6 +15,7 @@ void* handle_admin(void* arg) {
     free(data);
 
     printf("IN admin thread\n");
+    send(active_socket, "LOBBY_JOINED", 12, 0);
 
     close(active_socket);
     return NULL;
