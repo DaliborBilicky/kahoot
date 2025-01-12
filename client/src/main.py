@@ -8,6 +8,7 @@ HOST = "127.0.1.1"
 PORT = 8080
 PASSWORD = "abcd"
 
+
 class QuizApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -16,6 +17,7 @@ class QuizApp(ctk.CTk):
         self.username = None
         self.socket = None
         self.lobby_id = None
+
         self.show_frame(WelcomeScreen)
 
     def show_frame(self, frame_class):
@@ -31,6 +33,8 @@ class QuizApp(ctk.CTk):
 
     def set_socket(self, socket):
         self.socket = socket
+
+
 
 
 class WelcomeScreen(ctk.CTkFrame):
@@ -129,7 +133,7 @@ class QuestionScreen(ctk.CTkFrame):
     def submit_answer(self, answer):
         try:
             if self.master.socket:
-                self.master.socket.sendall(f"ANSWER:{answer}".encode())
+                self.master.socket.sendall(f"ANSWER_SUBMIT ANSWER:{answer}".encode())
                 print(f"Answer submitted: {answer}")
         except Exception as e:
             print(f"Error submitting answer: {e}")
@@ -137,6 +141,10 @@ class QuestionScreen(ctk.CTkFrame):
 class LobbyHostScreen(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
+        self.questions_list = []
+        self.current_question_index = 0 
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         ctk.CTkLabel(self, text=f"Admin Lobby (ID: {parent.lobby_id})", font=("Arial", 24)).pack(pady=20)
         self.user_count_label = ctk.CTkLabel(self, text="Users Connected: 0", font=("Arial", 14))
         self.user_count_label.pack(pady=10)
@@ -144,7 +152,32 @@ class LobbyHostScreen(ctk.CTkFrame):
         self.answer_count_label.pack(pady=10)
         ctk.CTkButton(self, text="Start Quiz", command=self.start_quiz).pack(pady=20)
         ctk.CTkButton(self, text="Exit Lobby", command=lambda: parent.show_frame(WelcomeScreen)).pack(pady=10)
-        threading.Thread(target=self.receive_lobby_updates, daemon=True).start()
+        self.load_questions_button = ctk.CTkButton(
+            self, 
+            text="Load Questions", 
+            command=self.load_questions
+        )
+        self.load_questions_button.pack(pady=10)
+        self.user_count = 0
+        self.answer_count = 0
+
+        #threading.Thread(target=self.receive_lobby_updates, daemon=True).start()
+    
+    def on_closing(self):
+        if self.master.socket:
+            try:
+                self.master.socket.sendall("SHUTDOWN".encode())
+                self.master.socket.close()
+            except:
+                pass
+        self.master.quit()
+        self.master.destroy()
+
+    def update_dashboard(self, user_count, answer_count):
+        self.user_count = user_count
+        self.answer_count = answer_count
+        self.user_count_label.configure(text=f"Users Connected: {self.user_count}")
+        self.answer_count_label.configure(text=f"Answers Submitted: {self.answer_count}")
 
     def receive_lobby_updates(self):
         try:
@@ -153,18 +186,76 @@ class LobbyHostScreen(ctk.CTkFrame):
                     self.master.socket.sendall(f"HOST_UPDATE:{self.master.lobby_id}".encode())
                     update = self.master.socket.recv(1024).decode()
 
-                    if update and "CURRENT_PLAYERS" in update:
-                        current_players = int(update.split(":")[2].split()[0])
-                        self.master.after(0, self.update_dashboard, current_players)
+                    if update:
+                        if "CURRENT_PLAYERS" in update and "MAX_PLAYERS" in update:
+                            try:
+                                print(f"GUI Received update: {update}")
+                                current_players = int(update.split(":")[2].split()[0])
+                                max_players = int(update.split(":")[3].split()[0])
+                                self.master.after(0, self.update_dashboard, current_players, max_players)
+                            except ValueError:
+                                print(f"Error parsing update: {update}")
+
                     time.sleep(5)
+
         except Exception as e:
             print(f"Error in lobby host updates: {e}")
 
-    def update_dashboard(self, user_count):
-        self.user_count_label.configure(text=f"Users Connected: {user_count}")
-
     def start_quiz(self):
-        print("Starting the quiz!")
+        print(f"Starting the quiz for lobby: {self.master.lobby_id}")
+        if self.master.socket:
+            try:
+                self.master.socket.sendall("START_GAME".encode()) 
+                self.send_next_question()
+                print("Quiz started.")
+                self.master.show_frame(QuestionScreen)
+            except Exception as e:
+                print(f"Error starting quiz: {e}")
+                messagebox.showerror("Error", f"Failed to start quiz: {e}")
+
+    def send_next_question(self):
+        if self.current_question_index < len(self.questions_list):
+            current_q = self.questions_list[self.current_question_index]
+            message = f"LOAD_QUESTION;{self.master.lobby_id};{current_q['question']};{('|').join(current_q['answers'])};{current_q['correct']}"
+            self.master.socket.sendall(message.encode())
+            response = self.master.socket.recv(1024).decode()
+            print(f"Question {self.current_question_index + 1} sent: {response}")
+            self.current_question_index += 1
+            
+            if self.current_question_index < len(self.questions_list):
+                self.after(10000, self.send_next_question)
+
+    def load_questions(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Text Files", "*.txt")]
+        )
+        if file_path:
+            try:
+                self.questions_list = [] 
+                with open(file_path, 'r') as file:
+                    lines = file.readlines()
+                    i = 0
+                    while i < len(lines):
+                        if len(lines[i].strip()) == 0:
+                            i += 1
+                            continue
+                            
+                        question = lines[i].strip()
+                        answers = lines[i+1].strip().split('|')
+                        correct_answer = int(lines[i+2].strip())
+                        
+                        question_data = {
+                            "question": question,
+                            "answers": answers,
+                            "correct": correct_answer
+                        }
+                        self.questions_list.append(question_data)
+                        i += 3
+                            
+                    messagebox.showinfo("Success", f"Loaded {len(self.questions_list)} questions")
+                    
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load questions: {str(e)}")
 
 def connect_to_server(host, port, password, action, lobby_param=None, frame=None):
     print(f"Connecting to {host}:{port}")
