@@ -65,7 +65,6 @@ void *process_requests(void *arg) {
         sync_buff_pop(&server->request_buffer, &client_message);
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
-            printf("in create\n");
             int lobby_id =
                 lobby_manager_create_lobby(server->lobby_manager, server->port);
 

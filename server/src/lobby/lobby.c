@@ -30,12 +30,12 @@ int lobby_init(Lobby *self, int base_port, int lobby_id_counter) {
     self->current_players = 0;
 
     self->passive_socket = passive_socket_init(self->port);
-    printf("%d\n", self->port);
     if (self->passive_socket < 0) {
         return -1;
     }
 
     self->thread_list_head = NULL;
+    self->admin_thread = 0;
 
     return 0;
 }
@@ -62,7 +62,9 @@ void lobby_shutdown(Lobby *self) {
         close(dummy_socket);
     }
     join_all_threads(&self->thread_list_head);
-    pthread_join(self->admin_thread, NULL);
+    if (self->admin_thread != 0) {
+        pthread_join(self->admin_thread, NULL);
+    }
     close(self->passive_socket);
 }
 
@@ -164,7 +166,7 @@ void lobby_run(Lobby *self) {
 }
 
 int lobby_manager_create_lobby(LobbyManager *self, int base_port) {
-    Lobby new_lobby;
+    Lobby new_lobby = {0};
     if (lobby_init(&new_lobby, base_port,
                    atomic_fetch_add(&self->lobby_id_counter, 1)) < 0) {
         fprintf(stderr, "ERROR: Failed to create lobby\n");
