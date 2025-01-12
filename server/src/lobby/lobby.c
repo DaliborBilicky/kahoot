@@ -30,12 +30,14 @@ int lobby_init(Lobby *self, int base_port, int lobby_id_counter) {
     self->current_players = 0;
 
     self->passive_socket = passive_socket_init(self->port);
-    printf("%d\n", self->port);
     if (self->passive_socket < 0) {
         return -1;
     }
 
     self->thread_list_head = NULL;
+    self->admin_thread = 0;
+    sync_list_init(&self->players, sizeof(Player));
+    question_init(&self->question, &self->running);
 
     return 0;
 }
@@ -61,8 +63,13 @@ void lobby_shutdown(Lobby *self) {
     } else {
         close(dummy_socket);
     }
+
+    question_stop(&self->question);
     join_all_threads(&self->thread_list_head);
-    pthread_join(self->admin_thread, NULL);
+    if (self->admin_thread != 0) {
+        pthread_join(self->admin_thread, NULL);
+    }
+    question_destroy(&self->question);
     close(self->passive_socket);
 }
 
@@ -123,11 +130,6 @@ void lobby_run(Lobby *self) {
         message[bytes_read] = '\0';
         data->lobby = self;
         data->active_socket = active_socket;
-        memset(data->nick, 0, MAX_NICKNAME_LEN);
-
-        printf("WAITING FOR CLIENT TO JOIN");
-        //print received message
-        printf("Request from client %d: %s\n", *active_socket, message);
         if (strncmp(message, "A JOIN_LOBBY", 12) == 0) {
             printf("Super user connected: %d\n", *active_socket);
 
@@ -142,8 +144,6 @@ void lobby_run(Lobby *self) {
             printf("Player connected: %d\n", *active_socket);
 
             pthread_t player_thread;
-            extract_nickname(message, data->nick);
-            data->nick[MAX_NICKNAME_LEN - 1] = '\0';
             if (pthread_create(&player_thread, NULL, handle_player, data) !=
                 0) {
                 perror("ERROR: Failed to create client thread");
@@ -151,7 +151,11 @@ void lobby_run(Lobby *self) {
                 free(active_socket);
                 free(data);
             } else {
+                Player player;
+                player.nick = "meno \0";
+                player.score = 0;
                 append_thread_to_list(&self->thread_list_head, player_thread);
+                sync_list_add(&self->players, &player);
                 self->current_players++;
             }
         } else {
@@ -168,7 +172,7 @@ void lobby_run(Lobby *self) {
 }
 
 int lobby_manager_create_lobby(LobbyManager *self, int base_port) {
-    Lobby new_lobby;
+    Lobby new_lobby = {0};
     if (lobby_init(&new_lobby, base_port,
                    atomic_fetch_add(&self->lobby_id_counter, 1)) < 0) {
         fprintf(stderr, "ERROR: Failed to create lobby\n");

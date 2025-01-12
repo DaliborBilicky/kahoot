@@ -10,7 +10,7 @@
 typedef struct Question {
     char text[MAX_TEXT_LEN];
     char choices[MAX_CHOICES][MAX_TEXT_LEN];
-    int answear;
+    int answer;
 } Question;
 
 typedef struct SyncQuestion {
@@ -20,6 +20,7 @@ typedef struct SyncQuestion {
     pthread_cond_t write;
     atomic_bool* lobby_running;
     int num_players;
+    atomic_bool* question_ready;
 } SyncQuestion;
 
 void question_init(SyncQuestion* self, atomic_bool* lobby_running);

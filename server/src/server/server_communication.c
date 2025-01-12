@@ -33,10 +33,7 @@ void *handle_request(void *arg) {
         }
 
         message[bytes_read] = '\0';
-
         printf("Request from client %d: %s\n", active_socket, message);
-
-
 
         if (!authenticated) {
             if (strncmp(message, server->password, strlen(server->password)) ==
@@ -55,8 +52,6 @@ void *handle_request(void *arg) {
             strncpy(client_message.message, message, MAX_REQUEST_LEN - 1);
             sync_buff_push(&server->request_buffer, &client_message);
         }
-
-        printf("IS AUTH: %d\n", authenticated);
     }
     close(active_socket);
     return NULL;
@@ -70,7 +65,6 @@ void *process_requests(void *arg) {
         sync_buff_pop(&server->request_buffer, &client_message);
 
         if (strncmp(client_message.message, "CREATE_LOBBY", 12) == 0) {
-            printf("in create\n");
             int lobby_id =
                 lobby_manager_create_lobby(server->lobby_manager, server->port);
 
